@@ -1,0 +1,31 @@
+---
+name: WWW-Ohloh-API
+version: 0.0.1
+author:
+  - 'Yanick Champoux <yanick@cpan.org>'
+abstract: Ohloh API implementation
+license: perl
+resources:
+  license: http://dev.perl.org/licenses/
+requires:
+  Digest::MD5: 0
+  LWP::UserAgent: 0
+  Object::InsideOut: 0
+  Readonly: 0
+  Test::More: 0
+  XML::Simple: 0
+  version: 0
+provides:
+  WWW::Ohloh::API:
+    file: lib/WWW/Ohloh/API.pm
+    version: 0.0.1
+  WWW::Ohloh::API::Account:
+    file: lib/WWW/Ohloh/API/Account.pm
+    version: 0.0.1
+  WWW::Ohloh::API::KudoScore:
+    file: lib/WWW/Ohloh/API/KudoScore.pm
+    version: 0.0.1
+generated_by: Module::Build version 0.280801
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2
