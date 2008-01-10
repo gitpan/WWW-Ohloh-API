@@ -10,10 +10,15 @@ use LWP::Simple;
 use LWP::UserAgent;
 use Readonly;
 use XML::Simple;
+use XML::LibXML;
+use Params::Validate qw(:all);
 use WWW::Ohloh::API::Account;
+use WWW::Ohloh::API::Analysis;
+use WWW::Ohloh::API::Project;
+use WWW::Ohloh::API::Projects;
 use Digest::MD5 qw/ md5_hex /;
 
-our $VERSION = '0.0.1';
+our $VERSION = '0.0.2';
 
 Readonly our $OHLOH_URL => 'http://www.ohloh.net/';
 
@@ -25,6 +30,10 @@ my @api_version_of :Field :Default(1);   # for now, there's only v1
 my @user_agent_of :Field;
 
 my @debugging :Field :Arg(debug) :Default(0) :Std(debug);
+
+my @parser_of :Field;
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub get_account {
     my $self = shift;
@@ -40,9 +49,63 @@ sub get_account {
 
     return WWW::Ohloh::API::Account->new( 
         request_url => $url,
-        xml => $xml->{account},
+        xml => $xml->findnodes( 'account[1]' ),
     );
 }
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub get_project {
+    my $self = shift;
+    my $id = shift;
+
+    my( $url, $xml ) = $self->_query_server( "projects/$id.xml" );
+
+    return WWW::Ohloh::API::Project->new(
+        request_url => $url,
+        xml => $xml->findnodes( 'project[1]' ),
+    );
+}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub get_projects {
+    my $self = shift;
+    my %arg = validate( @_, { query => 0, sort => 0, max => 0 } );
+
+    return WWW::Ohloh::API::Projects->new(
+        ohloh => $self,
+        query => $arg{query},
+        sort => $arg{sort},
+        max => $arg{max},
+    );
+}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub get_analysis {
+    my $self = shift;
+    my $project = shift;
+
+    $_[0] ||= 'latest';
+
+    my ( $url, $xml ) = $self->_query_server(
+            "projects/$project/analyses/$_[0].xml" );
+
+    my $analysis = WWW::Ohloh::API::Analysis->new(
+        request_url => $url,
+        xml => $xml->{analysis}
+    );
+
+    unless ( $analysis->project_id == $project ) {
+        croak "analysis $_[0] doesn't apply to project $project";
+    }
+
+    return $analysis;
+}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub _ua {
     my $self = shift;
@@ -52,6 +115,11 @@ sub _ua {
         $ua->agent( $useragent_signature );
     }
     return $ua;
+}
+
+sub _parser {
+    my $self = shift;
+    return $parser_of[ $$self ] ||= XML::LibXML->new;
 }
 
 sub _query_server {
@@ -81,13 +149,15 @@ sub _query_server {
 
     my $result = $response->content;
 
-    my $xml = XMLin( $result, SuppressEmpty => undef );
+    my $dom = eval { $self->_parser->parse_string( $result ) }
+        or croak "server didn't feed back valid xml: $@";
 
-    if ( $xml->{status} ne 'success' ) {
-        croak "query to Ohloh server failed: ", $xml->{status};
+    if ( $dom->findvalue( '/response/status/text()' ) ne 'success' ) {
+        croak "query to Ohloh server failed: ", 
+                $dom->findvalue( '/response/status/text()' );
     }
 
-    return $url, $xml->{result};
+    return $url, $dom->findnodes( '/response/result[1]' );
 }
 
 1; # Magic true value required at end of module
@@ -121,12 +191,59 @@ or set via the L<set_api_key> method.
 
     my $ohloh = WWW::Ohloh::API->new( api_key => $your_key );
 
-=head2 get_account( id => $account_id )
+=head2 get_account( [ id | email ] => $account_id )
 
-Return the account associated with the id, as a L<WWW::Ohloh::API::Account>
+Return the account associated with the $account_id as a 
+L<WWW::Ohloh::API::Account>
 object. If no such account exists, an error is thrown.
+The $accound_id can either be specified as the Ohloh id number, 
+or the email address associated with the account.
 
     my $account = $ohloh->get_account( id => 12933 );
+    my $other_accound = $ohloh->get_account( email => 'foo@bar.com' );
+
+
+=head2 get_project( $id )
+
+Return the project having the Ohloh id I<$id> as a
+L<WWW::Ohloh::API::Project>.  If no such project exists, 
+an error is thrown.
+
+    my $project = $ohloh->get_project( 1234) ;
+    print $project->name;
+
+=head2 get_projects( query => $query, sort => $sorting_order, max => $nbr )
+
+Return a set of projects as a L<WWW::Ohloh::API::Projects> object. 
+
+=head3 Parameters
+
+=over
+
+=item query
+
+If provided, only the projects matching the query string are returned.
+A project matches the query string is any of its name, description
+or tags does.
+
+=item sort
+
+If provided, the projects will be returned according to the specified 
+sorting order.  Valid values are 
+'created_at', 'description', 'id', 'name', 'stack_count',
+'updated_at', 'created_at_reverse',
+'description_reverse', 'id_reverse', 'name_reverse',
+'stack_count_reverse' or 'updated_at_reverse'.  If no sorting order
+is explicitly given, 'id' is the default.
+
+=item max
+
+If given, the project set will returns at most I<$nbr> projects.
+
+    # get top ten stacked projects
+    my @top = $ohloh->get_projects( max => 10, sort => 'stack_count' )->all;
+
+=back
 
 =head1 SEE ALSO
 
@@ -134,6 +251,8 @@ object. If no such account exists, an error is thrown.
 
 =item *
 
+L<WWW::Ohloh::API::Project>, 
+L<WWW::Ohloh::API::Projects>, 
 L<WWW::Ohloh::API::Account>, 
 L<WWW::Ohloh::API::KudoScore>.
 
@@ -149,7 +268,7 @@ How to obtain an Ohloh API key: http://www.ohloh.net/api_keys/new
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.0.1
+This document describes WWW::Ohloh::API version 0.0.2
 
 =head1 BUGS AND LIMITATIONS
 

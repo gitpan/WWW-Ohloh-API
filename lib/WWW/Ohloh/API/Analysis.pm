@@ -1,56 +1,46 @@
-package WWW::Ohloh::API::Account;
+package WWW::Ohloh::API::Analysis;
 
 use strict;
 use warnings;
 
 use Carp;
 use Object::InsideOut;
-use XML::LibXML;
-use WWW::Ohloh::API::KudoScore;
+use XML::Simple;
 
 our $VERSION = '0.0.2';
-
-use overload '""' => sub { $_[0]->name };
 
 my @request_url_of  :Field  :Arg(request_url)  :Get( request_url );
 my @xml_of  :Field :Arg(xml);   
 
-my @id_of :Field :Set(_set_id) :Get(id);
-my @name_of :Field :Set(_set_name) :Get(name);
-my @creation_date_of :Field :Set(_set_created_at) :Get(created_at);
-my @update_date_of :Field :Set(_set_updated_at) :Get(updated_at);
-my @homepage_url_of :Field :Set(_set_homepage_url) :Get(homepage_url);
-my @avatar_url_of :Field :Set(_set_avatar_url) :Get(avatar_url);
-my @posts_count_of :Field :Set(_set_posts_count) :Get(posts_count);
-my @location_of :Field :Set(_set_location) :Get(location);
-my @latitude_of :Field :Set(_set_latitude) :Get(latitude);
-my @longitude_of :Field :Set(_set_longitude) :Get(longitude);
-my @country_code_of :Field :Set(_set_country_code) :Get(country_code);
-my @kudo_of :Field Set(_set_kudo) :Get(kudo_score);
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+my @id_of :Field :Get(id) :Set(_set_id);
+my @project_id_of :Field :Get(project_id) :Set(_set_project_id);
+my @updated_at_of :Field :Get(updated_at) :Set(_set_updated_at);
+my @logged_at_of :Field :Get(logged_at) :Set(_set_logged_at);
+my @min_month_of :Field :Get(min_month) :Set(_set_min_month);
+my @max_month_of :Field :Get(max_month) :Set(_set_max_month);
+my @twelve_month_contributor_count_of :Field :Get(twelve_month_contributor_count) :Set(_set_twelve_month_contributor_count);
+my @total_code_lines_of :Field :Get(total_code_lines) :Set(_set_total_code_lines);
+my @main_language_id_of :Field :Get(main_language_id) :Set(_set_main_language_id);
+my @main_language_name_of :Field :Get(main_language_name) :Set(_set_main_language_name);
 
 sub _init :Init {
     my $self = shift;
 
     my $dom = $xml_of[ $$self ] or return;
 
-    $self->_set_id( $dom->findvalue( 'id/text()' ) );
-    $self->_set_name( $dom->findvalue( 'name/text()' ) );
-    $self->_set_created_at( $dom->findvalue( 'created_at/text()' ) );
-    $self->_set_updated_at( $dom->findvalue( 'updated_at/text()' ) );
-    $self->_set_homepage_url( $dom->findvalue( 'homepage_url/text()' ) );
-    $self->_set_avatar_url( $dom->findvalue( 'avatar_url/text()' ) );
-    $self->_set_posts_count( $dom->findvalue( 'posts_count/text()' ) );
-    $self->_set_location( $dom->findvalue( 'location/text()' ) );
-    $self->_set_country_code( $dom->findvalue( 'country_code/text()' ) );
-    $self->_set_latitude( $dom->findvalue( 'latitude/text()' ) );
-    $self->_set_longitude( $dom->findvalue( 'longitude/text()' ) );
+    $self->_set_id( $dom->findvalue( 'id/text()' ) ); 
+    $self->_set_project_id( $dom->findvalue( 'project_id/text()' ) ); 
+    $self->_set_updated_at( $dom->findvalue( 'updated_at/text()' ) ); 
+    $self->_set_logged_at( $dom->findvalue( 'logged_at/text()' ) ); 
+    $self->_set_min_month( $dom->findvalue( 'min_month/text()' ) ); 
+    $self->_set_max_month( $dom->findvalue( 'max_month/text()' ) ); 
+    $self->_set_twelve_month_contributor_count( 
+            $dom->findvalue( 'twelve_month_contributor_count/text()' ) ); 
+    $self->_set_total_code_lines( $dom->findvalue( 'total_code_lines/text()' ) ); 
+    $self->_set_main_language_id( $dom->findvalue( 'main_language_id/text()' ) ); 
+    $self->_set_main_language_name( $dom->findvalue( 'main_language_name/text()' ) ); 
 
-    if( my( $node ) = $dom->findnodes( 'kudo_score[1]' ) ) {
-        $kudo_of[ $$self ] 
-            = WWW::Ohloh::API::KudoScore->new( xml => $node );
-    }
+    return;
 }
 
 sub as_xml { 
@@ -58,36 +48,25 @@ sub as_xml {
     my $xml;
     my $w = XML::Writer->new( OUTPUT => \$xml );
 
-    $w->startTag( 'account' );
-    
-    $w->dataElement( id => $self->id );
-    $w->dataElement( name => $self->name );
-    $w->dataElement( created_at => $self->created_at );
-    $w->dataElement( updated_at => $self->updated_at );
-    $w->dataElement( homepage_url => $self->homepage_url );
-    $w->dataElement( avatar_url => $self->avatar_url );
-    $w->dataElement( posts_count => $self->posts_count );
-    $w->dataElement( location => $self->location );
-    $w->dataElement( country_code => $self->country_code );
-    $w->dataElement( latitude => $self->latitude );
-    $w->dataElement( longitude => $self->longitude );
-
-    $xml .= $self->kudo->as_xml if $self->kudo;
+    $w->startTag( 'analysis' );
+    for my $attr ( qw/ id project_id
+                        updated_at logged_at min_month
+                        max_month twelve_month_contributor_count
+                        total_code_lines
+                        main_language_name
+                        main_language_id
+                        / ) {
+        $w->dataElement( $attr, $self->$attr );
+    }
 
     $w->endTag;
 
-    return $xml; 
+    return $xml;
 }
 
-sub kudoScore {
-    my $self = shift;
-    return $kudo_of[ $$self ];
-}
+*language = *main_language = *main_language_name;
 
-# aliases
-*kudo = *kudoScore;
-
-'end of WWW::Ohloh::API::Account';
+'end of WWW::Ohloh::API::Analysis';
 __END__
 
 =head1 NAME
@@ -176,13 +155,6 @@ as an XML string.  Note that this is not the exact xml document as returned
 by the Ohloh server: due to the current XML parsing module used
 by W::O::A (to wit: L<XML::Simple>), the ordering of the nodes can differ.
 
-=head1 OVERLOADING
-
-When the object is called in a string context, it'll be replaced by
-the name associated with the account. E.g.,
-
-    print $account;  # equivalent to 'print $account->name'
-
 =head1 SEE ALSO
 
 =over
@@ -228,4 +200,8 @@ Copyright (c) 2008, Yanick Champoux C<< <yanick@cpan.org> >>. All rights reserve
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.
+
+
+
+
 

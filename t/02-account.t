@@ -4,7 +4,7 @@ use warnings;
 use Test::More qw/ no_plan /;    # last test to print
 
 use WWW::Ohloh::API;
-use XML::Simple;
+use XML::LibXML;
 
 # fake the online request
 
@@ -38,6 +38,8 @@ END_XML
 my $ohloh = WWW::Ohloh::API->new;
 my $account = $ohloh->get_account( id => 12933 );
 
+is $account => 'Yanick', 'overloading';
+
 like $account->as_xml => qr# ^ \s* <account> .* </account> \s* $ #sx, 'as_xml()';
 
 is $account->request_url =>
@@ -47,7 +49,7 @@ is $account->id           => 12933,                  'id';
 is $account->name         => 'Yanick',               'name';
 is $account->created_at   => '2007-12-30T18:39:18Z', 'created at';
 is $account->updated_at   => '2008-01-03T14:53:18Z', 'updated at';
-is $account->homepage_url => undef,                  "homepage url";
+is $account->homepage_url => '',                     "homepage url";
 is $account->avatar_url =>
     'http://www.gravatar.com/avatar.php?gravatar_id=a15c336550dd22cbdff9743a54b56b3b',
     "avatar url";
@@ -74,9 +76,11 @@ like $kudo->as_xml => qr# ^ \s* <kudo_score> .* </kudo_score> \s* $ #sx, 'kudo a
 sub masquerade_server_query {
     my ( $url, $xml ) = @_;
     no warnings;    # it's naughty stuff, but for a good cause
+    my $parser = XML::LibXML->new;
+    my $dom = $parser->parse_string( $xml );
     eval {
         sub WWW::Ohloh::API::_query_server {
-            return $url, XMLin( $xml, SuppressEmpty => undef );
+            return $url, $dom->findnodes( '//result[1]' );
         }
     };
 }

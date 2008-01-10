@@ -1,6 +1,6 @@
 ---
 name: WWW-Ohloh-API
-version: 0.0.1
+version: 0.0.2
 author:
   - 'Yanick Champoux <yanick@cpan.org>'
 abstract: Ohloh API implementation
@@ -14,17 +14,27 @@ requires:
   Readonly: 0
   Test::More: 0
   XML::Simple: 0
+  XML::Writer: 0
   version: 0
 provides:
   WWW::Ohloh::API:
     file: lib/WWW/Ohloh/API.pm
-    version: 0.0.1
+    version: 0.0.2
   WWW::Ohloh::API::Account:
     file: lib/WWW/Ohloh/API/Account.pm
-    version: 0.0.1
+    version: 0.0.2
+  WWW::Ohloh::API::Analysis:
+    file: lib/WWW/Ohloh/API/Analysis.pm
+    version: 0.0.2
   WWW::Ohloh::API::KudoScore:
     file: lib/WWW/Ohloh/API/KudoScore.pm
-    version: 0.0.1
+    version: 0.0.2
+  WWW::Ohloh::API::Project:
+    file: lib/WWW/Ohloh/API/Project.pm
+    version: 0.0.2
+  WWW::Ohloh::API::Projects:
+    file: lib/WWW/Ohloh/API/Projects.pm
+    version: 0.0.2
 generated_by: Module::Build version 0.280801
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html
