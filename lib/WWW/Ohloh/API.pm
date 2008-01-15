@@ -16,11 +16,13 @@ use WWW::Ohloh::API::Account;
 use WWW::Ohloh::API::Analysis;
 use WWW::Ohloh::API::Project;
 use WWW::Ohloh::API::Projects;
+use WWW::Ohloh::API::Languages;
 use Digest::MD5 qw/ md5_hex /;
 
-our $VERSION = '0.0.2';
+our $VERSION = '0.0.3';
 
-Readonly our $OHLOH_URL => 'http://www.ohloh.net/';
+our $OHLOH_URL;  # Perl 5.6 doesn't seem to like Readonly our $foo ...
+Readonly $OHLOH_URL => 'http://www.ohloh.net/';
 
 our $useragent_signature = "WWW-Ohloh-API/$VERSION";
 
@@ -105,6 +107,33 @@ sub get_analysis {
     return $analysis;
 }
 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub get_languages {
+    my $self = shift;
+    my %arg = @_;
+
+    return WWW::Ohloh::API::Languages->new(
+        ohloh => $self,
+        ( sort => $arg{sort} ) x !!$arg{sort},
+    );
+}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub get_language {
+    my $self = shift;
+    my $id = shift;
+
+    my( $url, $xml ) = $self->_query_server( "languages/$id.xml" );
+
+    return WWW::Ohloh::API::Language->new(
+        request_url => $url,
+        xml => $xml->findnodes( 'language[1]' ),
+    );
+    
+}
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub _ua {
@@ -216,6 +245,7 @@ an error is thrown.
 
 Return a set of projects as a L<WWW::Ohloh::API::Projects> object. 
 
+
 =head3 Parameters
 
 =over
@@ -245,6 +275,17 @@ If given, the project set will returns at most I<$nbr> projects.
 
 =back
 
+=head2 get_languages( sort => $order )
+
+Return the languages known to Ohloh a set of L<WWW::Ohloh::API::Language>
+objects. 
+
+An optional I<sort> parameter can be passed to the method. The valid
+I<$order>s it accepts are
+C<total>, C<code>, C<projects>, C<comment_ratio>, 
+C<contributors>, C<commits> and C<name>. If I<sort> is not explicitly called,
+projects are returned in alphabetical order of C<name>s.
+
 =head1 SEE ALSO
 
 =over
@@ -254,7 +295,9 @@ If given, the project set will returns at most I<$nbr> projects.
 L<WWW::Ohloh::API::Project>, 
 L<WWW::Ohloh::API::Projects>, 
 L<WWW::Ohloh::API::Account>, 
-L<WWW::Ohloh::API::KudoScore>.
+L<WWW::Ohloh::API::KudoScore>,
+L<WWW::Ohloh::API::Languages>,
+L<WWW::Ohloh::API::Language>.
 
 =item *
 
@@ -268,7 +311,7 @@ How to obtain an Ohloh API key: http://www.ohloh.net/api_keys/new
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.0.2
+This document describes WWW::Ohloh::API version 0.0.3
 
 =head1 BUGS AND LIMITATIONS
 
