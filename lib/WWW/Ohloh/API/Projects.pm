@@ -11,7 +11,7 @@ use List::MoreUtils qw/ none any /;
 
 use overload  '<>' => \&next;
 
-our $VERSION = '0.0.3';
+our $VERSION = '0.0.4';
 
 my @all_read         :Field :Default(0);
 my @cache_of         :Field;
@@ -22,16 +22,10 @@ my @query_of :Field  :Arg(query);
 my @sort_order_of :Field :Arg(sort) :Type(\&WWW::Ohloh::API::Projects::is_allowed_sort);
 my @max_entries_of :Field :Arg(max) :Get(max);
 
-my @ALLOWED_SORTING;
-Readonly @ALLOWED_SORTING 
-    => map { $_, $_.'_reverse'  } qw/
-            created_at
-            description
-            id
-            name
-            stack_count
-            updated_at
-            /;
+Readonly our @ALLOWED_SORTING => map { $_, $_ . '_reverse' }
+  qw/ created_at description id name stack_count updated_at /;
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub is_allowed_sort {
     my $s = shift;
@@ -89,7 +83,10 @@ sub _gather_more {
             page => ++$page_of[ $$self ]  } );
 
     my @new_batch = 
-         map { WWW::Ohloh::API::Project->new( xml => $_ ) } 
+         map { WWW::Ohloh::API::Project->new( 
+                    ohloh => $ohloh_of[ $$self ],
+                    xml => $_,
+                ) } 
          $xml->findnodes( 'project' );
 
 
@@ -245,7 +242,7 @@ Ohloh Account API reference: http://www.ohloh.net/api/reference/project
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.0.3
+This document describes WWW::Ohloh::API version 0.0.4
 
 =head1 BUGS AND LIMITATIONS
 

@@ -6,10 +6,8 @@ use Carp;
 
 use Object::InsideOut;
 
-use LWP::Simple;
 use LWP::UserAgent;
 use Readonly;
-use XML::Simple;
 use XML::LibXML;
 use Params::Validate qw(:all);
 use WWW::Ohloh::API::Account;
@@ -17,12 +15,12 @@ use WWW::Ohloh::API::Analysis;
 use WWW::Ohloh::API::Project;
 use WWW::Ohloh::API::Projects;
 use WWW::Ohloh::API::Languages;
+use WWW::Ohloh::API::ActivityFacts;
 use Digest::MD5 qw/ md5_hex /;
 
-our $VERSION = '0.0.3';
+our $VERSION = '0.0.4';
 
-our $OHLOH_URL;  # Perl 5.6 doesn't seem to like Readonly our $foo ...
-Readonly $OHLOH_URL => 'http://www.ohloh.net/';
+Readonly our $OHLOH_URL => 'http://www.ohloh.net/';
 
 our $useragent_signature = "WWW-Ohloh-API/$VERSION";
 
@@ -64,6 +62,7 @@ sub get_project {
     my( $url, $xml ) = $self->_query_server( "projects/$id.xml" );
 
     return WWW::Ohloh::API::Project->new(
+        ohloh       => $self,
         request_url => $url,
         xml => $xml->findnodes( 'project[1]' ),
     );
@@ -97,7 +96,7 @@ sub get_analysis {
 
     my $analysis = WWW::Ohloh::API::Analysis->new(
         request_url => $url,
-        xml => $xml->{analysis}
+        xml => $xml->findnodes( 'analysis[1]' ),
     );
 
     unless ( $analysis->project_id == $project ) {
@@ -134,6 +133,23 @@ sub get_language {
     );
     
 }
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub get_activity_facts {
+    my $self = shift;
+    my ( $project, $analysis ) = validate_pos( @_, 
+        1,
+        { default => 'latest' },
+    );
+
+    return WWW::Ohloh::API::ActivityFacts->new(
+        ohloh => $self,
+        project => $project,
+        analysis => $analysis,
+    );
+}
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub _ua {
@@ -286,6 +302,15 @@ C<total>, C<code>, C<projects>, C<comment_ratio>,
 C<contributors>, C<commits> and C<name>. If I<sort> is not explicitly called,
 projects are returned in alphabetical order of C<name>s.
 
+=head2 get_activity_facts( $project_id, $analysis )
+
+Return a set of activity facts computed out of the project associated
+with the I<$project_id> as a L<WWW::Ohloh::API::ActivityFacts> object. 
+
+The optional argument I<$analysis> can be either an Ohloh analysis id 
+(which must be an analysis associated to the project) or the keyword
+'latest'. By default the latest analysis will be queried.
+
 =head1 SEE ALSO
 
 =over
@@ -311,7 +336,7 @@ How to obtain an Ohloh API key: http://www.ohloh.net/api_keys/new
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.0.3
+This document describes WWW::Ohloh::API version 0.0.4
 
 =head1 BUGS AND LIMITATIONS
 
