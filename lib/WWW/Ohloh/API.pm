@@ -15,46 +15,114 @@ use WWW::Ohloh::API::Analysis;
 use WWW::Ohloh::API::Project;
 use WWW::Ohloh::API::Projects;
 use WWW::Ohloh::API::Languages;
+use WWW::Ohloh::API::ActivityFact;
 use WWW::Ohloh::API::ActivityFacts;
 use WWW::Ohloh::API::Kudos;
+use WWW::Ohloh::API::ContributorLanguageFact;
+use WWW::Ohloh::API::Enlistment;
+use WWW::Ohloh::API::Factoid;
 use Digest::MD5 qw/ md5_hex /;
 
-our $VERSION = '0.0.6';
+our $VERSION = '0.0.7';
 
 Readonly our $OHLOH_URL => 'http://www.ohloh.net/';
 
 our $useragent_signature = "WWW-Ohloh-API/$VERSION";
 
-my @api_key_of :Field :Std(api_key) :Arg(api_key);
-my @api_version_of :Field :Default(1);   # for now, there's only v1
+my @api_key_of : Field : Std(api_key) : Arg(api_key);
+my @api_version_of : Field : Default(1);    # for now, there's only v1
 
-my @user_agent_of :Field;
+my @user_agent_of : Field;
 
-my @debugging :Field :Arg(debug) :Default(0) :Std(debug);
+my @debugging : Field : Arg(debug) : Default(0) : Std(debug);
 
-my @parser_of :Field;
+my @parser_of : Field;
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub get_account {
     my $self = shift;
 
-    my( $type, $id ) = @_;
+    my ( $type, $id ) = @_;
 
-    $type eq 'id' or $type eq 'email' 
-        or croak "first argument must be 'id' or 'email'";
+    $type eq 'id'
+      or $type eq 'email'
+      or croak "first argument must be 'id' or 'email'";
 
-    $id = md5_hex( $id ) if $type eq 'email';
+    $id = md5_hex($id) if $type eq 'email';
 
-    my( $url, $xml ) = $self->_query_server( "accounts/$id.xml" );
+    my ( $url, $xml ) = $self->_query_server("accounts/$id.xml");
 
-    return WWW::Ohloh::API::Account->new( 
+    return WWW::Ohloh::API::Account->new(
         ohloh       => $self,
         request_url => $url,
-        xml => $xml->findnodes( 'account[1]' ),
+        xml         => $xml->findnodes('account[1]'),
     );
 }
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub get_enlistments {
+    my $self = shift;
+
+    my %param = validate( @_, { project_id => 1 } );
+
+    my ( $url, $xml ) =
+      $self->_query_server("projects/$param{project_id}/enlistments.xml");
+
+    return map {
+        WWW::Ohloh::API::Enlistment->new(
+            ohloh       => $self,
+            request_url => $url,
+            xml         => $_
+          )
+    } $xml->findnodes('//enlistment');
+
+}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub get_factoids {
+    my $self = shift;
+
+    my $project_id = shift;
+
+    my ( $url, $xml ) =
+      $self->_query_server("projects/$project_id/factoids.xml");
+
+    return map {
+        WWW::Ohloh::API::Factoid->new(
+            ohloh       => $self,
+            request_url => $url,
+            xml         => $_
+          )
+    } $xml->findnodes('//factoid');
+}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub get_contributor_language_facts {
+    my $self = shift;
+
+    my %param = validate(
+        @_,
+        {   project_id     => 1,
+            contributor_id => 1,
+        } );
+
+    my ( $url, $xml ) = $self->_query_server(
+        "projects/$param{project_id}/contributors/$param{contributor_id}.xml"
+    );
+
+    return map {
+        WWW::Ohloh::API::ContributorLanguageFact->new(
+            ohloh       => $self,
+            request_url => $url,
+            xml         => $_
+          )
+    } $xml->findnodes('//contributor_language_fact');
+
+}
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -78,17 +146,16 @@ sub get_kudos {
 
 sub get_project {
     my $self = shift;
-    my $id = shift;
+    my $id   = shift;
 
-    my( $url, $xml ) = $self->_query_server( "projects/$id.xml" );
+    my ( $url, $xml ) = $self->_query_server("projects/$id.xml");
 
     return WWW::Ohloh::API::Project->new(
         ohloh       => $self,
         request_url => $url,
-        xml => $xml->findnodes( 'project[1]' ),
+        xml         => $xml->findnodes('project[1]'),
     );
 }
-
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -99,25 +166,25 @@ sub get_projects {
     return WWW::Ohloh::API::Projects->new(
         ohloh => $self,
         query => $arg{query},
-        sort => $arg{sort},
-        max => $arg{max},
+        sort  => $arg{sort},
+        max   => $arg{max},
     );
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub get_analysis {
-    my $self = shift;
+    my $self    = shift;
     my $project = shift;
 
     $_[0] ||= 'latest';
 
-    my ( $url, $xml ) = $self->_query_server(
-            "projects/$project/analyses/$_[0].xml" );
+    my ( $url, $xml ) =
+      $self->_query_server("projects/$project/analyses/$_[0].xml");
 
     my $analysis = WWW::Ohloh::API::Analysis->new(
         request_url => $url,
-        xml => $xml->findnodes( 'analysis[1]' ),
+        xml         => $xml->findnodes('analysis[1]'),
     );
 
     unless ( $analysis->project_id == $project ) {
@@ -127,12 +194,11 @@ sub get_analysis {
     return $analysis;
 }
 
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub get_languages {
     my $self = shift;
-    my %arg = @_;
+    my %arg  = @_;
 
     return WWW::Ohloh::API::Languages->new(
         ohloh => $self,
@@ -144,29 +210,27 @@ sub get_languages {
 
 sub get_language {
     my $self = shift;
-    my $id = shift;
+    my $id   = shift;
 
-    my( $url, $xml ) = $self->_query_server( "languages/$id.xml" );
+    my ( $url, $xml ) = $self->_query_server("languages/$id.xml");
 
     return WWW::Ohloh::API::Language->new(
         request_url => $url,
-        xml => $xml->findnodes( 'language[1]' ),
+        xml         => $xml->findnodes('language[1]'),
     );
-    
+
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub get_activity_facts {
     my $self = shift;
-    my ( $project, $analysis ) = validate_pos( @_, 
-        1,
-        { default => 'latest' },
-    );
+    my ( $project, $analysis ) =
+      validate_pos( @_, 1, { default => 'latest' }, );
 
     return WWW::Ohloh::API::ActivityFacts->new(
-        ohloh => $self,
-        project => $project,
+        ohloh    => $self,
+        project  => $project,
         analysis => $analysis,
     );
 }
@@ -176,57 +240,56 @@ sub get_activity_facts {
 sub _ua {
     my $self = shift;
     my $ua;
-    unless ( $ua = $user_agent_of[ $$self ] ) {
-        $ua = $user_agent_of[ $$self ] = LWP::UserAgent->new;
-        $ua->agent( $useragent_signature );
+    unless ( $ua = $user_agent_of[$$self] ) {
+        $ua = $user_agent_of[$$self] = LWP::UserAgent->new;
+        $ua->agent($useragent_signature);
     }
     return $ua;
 }
 
 sub _parser {
     my $self = shift;
-    return $parser_of[ $$self ] ||= XML::LibXML->new;
+    return $parser_of[$$self] ||= XML::LibXML->new;
 }
 
 sub _query_server {
-    my $self = shift;
-    my $url = shift;
-    my %param = $_[0] ? %{$_[0]} : ();
+    my $self  = shift;
+    my $url   = shift;
+    my %param = $_[0] ? %{ $_[0] } : ();
 
     $param{api_key} = $self->get_api_key
-        or croak "api key not configured";
+      or croak "api key not configured";
 
-    $param{v} = $api_version_of[ $$self ];
-    
+    $param{v} = $api_version_of[$$self];
+
     $url = $OHLOH_URL . $url;
 
     $url .= '?' . join '&', map { "$_=$param{$_}" } keys %param;
 
-    warn "querying ohloh server with $url" if $debugging[ $$self ];
+    warn "querying ohloh server with $url" if $debugging[$$self];
 
     # TODO: beef up here for failures
-    my $request = HTTP::Request->new(GET => $url );
-    my $response = $self->_ua->request( $request );
+    my $request = HTTP::Request->new( GET => $url );
+    my $response = $self->_ua->request($request);
 
     unless ( $response->is_success ) {
-        croak "http query to Ohloh server failed: " . 
-                    $response->status_line;
+        croak "http query to Ohloh server failed: " . $response->status_line;
     }
 
     my $result = $response->content;
 
-    my $dom = eval { $self->_parser->parse_string( $result ) }
-        or croak "server didn't feed back valid xml: $@";
+    my $dom = eval { $self->_parser->parse_string($result) }
+      or croak "server didn't feed back valid xml: $@";
 
-    if ( $dom->findvalue( '/response/status/text()' ) ne 'success' ) {
-        croak "query to Ohloh server failed: ", 
-                $dom->findvalue( '/response/status/text()' );
+    if ( $dom->findvalue('/response/status/text()') ne 'success' ) {
+        croak "query to Ohloh server failed: ",
+          $dom->findvalue('/response/status/text()');
     }
 
-    return $url, $dom->findnodes( '/response/result[1]' );
+    return $url, $dom->findnodes('/response/result[1]');
 }
 
-1; # Magic true value required at end of module
+1;    # Magic true value required at end of module
 __END__
 
 =head1 NAME
@@ -282,7 +345,6 @@ an error is thrown.
 
 Return a set of projects as a L<WWW::Ohloh::API::Projects> object. 
 
-
 =head3 Parameters
 
 =over
@@ -332,6 +394,23 @@ The optional argument I<$analysis> can be either an Ohloh analysis id
 (which must be an analysis associated to the project) or the keyword
 'latest'. By default the latest analysis will be queried.
 
+=head2 get_contributor_language_facts( project_id => $p_id,  contributor_id => $c_id )
+
+    my @facts = $ohloh->get_contributor_language_facts(
+        project_id     => 1234,
+        contributor_id => 5678
+    );
+
+Return the list of contributor language facts associated to the 
+contributor I<$c_id> for the project I<$p_id>.
+
+=head2 get_enlistments( project_id => $id )
+
+    my @enlistments = $ohloh->get_enlistments( project_id => 1234 );
+
+Return the list of L<WWW::Ohloh::API::Enlistment> objects pertaining to the
+given project.
+
 =head1 SEE ALSO
 
 =over
@@ -357,7 +436,7 @@ How to obtain an Ohloh API key: http://www.ohloh.net/api_keys/new
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.0.6
+This document describes WWW::Ohloh::API version 0.0.7
 
 =head1 BUGS AND LIMITATIONS
 
