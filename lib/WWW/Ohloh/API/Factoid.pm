@@ -7,7 +7,7 @@ use Carp;
 use Object::InsideOut;
 use XML::LibXML;
 
-our $VERSION = '0.0.8';
+our $VERSION = '0.0.9';
 
 my @request_url_of : Field : Arg(request_url) : Get( request_url );
 my @xml_of : Field : Arg(xml);
@@ -27,6 +27,8 @@ my @type_of : Field : Set(_set_type) : Get(type);
 my @description_of : Field : Set(_set_description) : Get(description);
 my @severity_of : Field : Set(_set_severity) : Get(severity);
 my @license_id_of : Field : Set(_set_license_id) : Get(license_id);
+
+my @ohloh_of : Field : Arg(ohloh);
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -156,7 +158,7 @@ Ohloh Account API reference: http://www.ohloh.net/api/reference/activity_fact
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.0.8
+This document describes WWW::Ohloh::API version 0.0.9
 
 =head1 BUGS AND LIMITATIONS
 
