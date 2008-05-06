@@ -1,6 +1,6 @@
 ---
 name: WWW-Ohloh-API
-version: 0.0.9
+version: 0.1.0
 author:
   - 'Yanick Champoux <yanick@cpan.org>'
 abstract: Ohloh API implementation
@@ -24,55 +24,64 @@ requires:
 provides:
   WWW::Ohloh::API:
     file: lib/WWW/Ohloh/API.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::Account:
     file: lib/WWW/Ohloh/API/Account.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::ActivityFact:
     file: lib/WWW/Ohloh/API/ActivityFact.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::ActivityFacts:
     file: lib/WWW/Ohloh/API/ActivityFacts.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::Analysis:
     file: lib/WWW/Ohloh/API/Analysis.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::ContributorFact:
     file: lib/WWW/Ohloh/API/ContributorFact.pm
-    version: 0.0.6
+    version: 0.1.0
   WWW::Ohloh::API::ContributorLanguageFact:
     file: lib/WWW/Ohloh/API/ContributorLanguageFact.pm
-    version: 0.0.6
+    version: 0.1.0
   WWW::Ohloh::API::Enlistment:
     file: lib/WWW/Ohloh/API/Enlistment.pm
-    version: 0.0.6
+    version: 0.1.0
   WWW::Ohloh::API::Factoid:
     file: lib/WWW/Ohloh/API/Factoid.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::Kudo:
     file: lib/WWW/Ohloh/API/Kudo.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::KudoScore:
     file: lib/WWW/Ohloh/API/KudoScore.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::Kudos:
     file: lib/WWW/Ohloh/API/Kudos.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::Language:
     file: lib/WWW/Ohloh/API/Language.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::Languages:
     file: lib/WWW/Ohloh/API/Languages.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::Project:
     file: lib/WWW/Ohloh/API/Project.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::Projects:
     file: lib/WWW/Ohloh/API/Projects.pm
-    version: 0.0.9
+    version: 0.1.0
   WWW::Ohloh::API::Repository:
     file: lib/WWW/Ohloh/API/Repository.pm
-    version: 0.0.6
+    version: 0.1.0
+  WWW::Ohloh::API::SizeFact:
+    file: lib/WWW/Ohloh/API/SizeFact.pm
+    version: 0.1.0
+  WWW::Ohloh::API::Stack:
+    file: lib/WWW/Ohloh/API/Stack.pm
+    version: 0.1.0
+  WWW::Ohloh::API::StackEntry:
+    file: lib/WWW/Ohloh/API/StackEntry.pm
+    version: 0.1.0
 generated_by: Module::Build version 0.280801
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html

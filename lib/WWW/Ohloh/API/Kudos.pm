@@ -10,7 +10,7 @@ use Readonly;
 use List::MoreUtils qw/ any /;
 use WWW::Ohloh::API::Kudo;
 
-our $VERSION = '0.0.9';
+our $VERSION = '0.1.0';
 
 my @ohloh_of : Field : Arg(ohloh);
 my @account_id_of : Field : Arg(id) : Get(_id);
@@ -68,7 +68,11 @@ sub received {
 
         my @kudos;
         for my $n ( $xml->findnodes('kudo') ) {
-            push @kudos, WWW::Ohloh::API::Kudo->new( xml => $n, );
+            push @kudos,
+              WWW::Ohloh::API::Kudo->new(
+                ohloh => $ohloh_of[$$self],
+                xml   => $n,
+              );
         }
         $received_kudos_of[$$self] = \@kudos;
     }
@@ -163,7 +167,7 @@ Ohloh Account API reference: http://www.ohloh.net/api/reference/kudo
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.0.9
+This document describes WWW::Ohloh::API version 0.1.0
 
 =head1 BUGS AND LIMITATIONS
 

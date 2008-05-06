@@ -8,7 +8,7 @@ use Object::InsideOut;
 use XML::LibXML;
 use WWW::Ohloh::API::KudoScore;
 
-our $VERSION = '0.0.9';
+our $VERSION = '0.1.0';
 
 use overload '""' => sub { $_[0]->name };
 
@@ -30,6 +30,8 @@ my @country_code_of : Field : Set(_set_country_code) : Get(country_code);
 my @kudo_of : Field : Set(_set_kudo) : Get(kudo_score);
 
 my @kudos_of : Field : Arg(kudos);
+
+my @stack : Field;
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -62,17 +64,14 @@ sub as_xml {
 
     $w->startTag('account');
 
-    $w->dataElement( id           => $self->id );
-    $w->dataElement( name         => $self->name );
-    $w->dataElement( created_at   => $self->created_at );
-    $w->dataElement( updated_at   => $self->updated_at );
-    $w->dataElement( homepage_url => $self->homepage_url );
-    $w->dataElement( avatar_url   => $self->avatar_url );
-    $w->dataElement( posts_count  => $self->posts_count );
-    $w->dataElement( location     => $self->location );
-    $w->dataElement( country_code => $self->country_code );
-    $w->dataElement( latitude     => $self->latitude );
-    $w->dataElement( longitude    => $self->longitude );
+    $w->dataElement( $_ => $self->$_ ) for qw/
+      id name created_at updated_at homepage_url
+      avatar_url posts_count
+      location
+      country_code
+      latitude
+      longitude
+      /;
 
     $xml .= $self->kudo->as_xml if $self->kudo;
 
@@ -88,6 +87,22 @@ sub kudoScore {
 
 # aliases
 *kudo = *kudoScore;
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub stack {
+    my $self = shift;
+
+    my $retrieve = shift;
+    $retrieve = 1 unless defined $retrieve;
+
+    if ( $retrieve and not $stack[$$self] ) {
+        $stack[$$self] = $ohloh_of[$$self]->get_account_stack( $self->id );
+        $stack[$$self]->set_account($self);
+    }
+
+    return $stack[$$self];
+}
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -199,6 +214,16 @@ Return a L<WWW::Ohloh::API::KudoScore> object holding the account's
 kudo information, or I<undef> if the account doesn't have a kudo score
 yet. All three methods are equivalent.
 
+=head3 stack( $retrieve )
+
+Return the stack associated with the account as a
+L<WWW::Ohloh::API::Stack> object.
+
+If the optional I<$retrieve> argument is given and false,
+the stack will not be queried from the Ohloh server and,
+if the information has not been retrieved previously, the method
+will return nothing.
+
 =head2 Other Methods
 
 =head3 as_xml
@@ -235,7 +260,7 @@ Ohloh Account API reference: http://www.ohloh.net/api/reference/account
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.0.9
+This document describes WWW::Ohloh::API version 0.1.0
 
 =head1 BUGS AND LIMITATIONS
 
