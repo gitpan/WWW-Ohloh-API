@@ -1,4 +1,4 @@
-package WWW::Ohloh::API::Languages;
+package WWW::Ohloh::API::Messages;
 
 use strict;
 use warnings;
@@ -9,17 +9,54 @@ use Carp;
 use XML::LibXML;
 use Readonly;
 use List::MoreUtils qw/ any /;
-use WWW::Ohloh::API::Language;
+use WWW::Ohloh::API::Message;
 
 our $VERSION = '0.2.0';
 
-my @ALLOWED_SORTING;
-Readonly @ALLOWED_SORTING =>
-  qw/ total code projects comment_ratio contributors commits name /;
+my @account_of : Field : Arg(name => 'account') : Get(account);
 
-sub element      { return 'WWW::Ohloh::API::Language' }
-sub element_name { return 'language' }
-sub query_path   { return 'languages.xml' }
+my @project_of : Field : Arg(name => 'project') : Get(project);
+
+my @ALLOWED_SORTING;
+Readonly @ALLOWED_SORTING => qw/ /;    # TODO
+
+sub element      { return 'WWW::Ohloh::API::Message' }
+sub element_name { return 'message' }
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub query_path {
+    my $self = shift;
+
+    my $path;
+
+    if ( $self->account ) {
+        $path = 'accounts/' . $self->account;
+    }
+    elsif ( $self->project ) {
+        $path = 'projects/' . $self->project;
+    }
+    else {
+        croak "needs to have either an acccount or a project";
+    }
+
+    $path .= '/messages.xml';
+
+    return $path;
+}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub _init : Init {
+    my $self = shift;
+
+    croak "must use only one of the arguments 'account' and 'project'"
+      if $self->project and $self->account;
+
+    croak "must use one of the arguments 'account' or 'project'"
+      unless $self->project
+          or $self->account;
+}
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -30,15 +67,7 @@ sub is_allowed_sort {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub _init : Init {
-    my $self = shift;
-
-    return;
-}
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-'end of WWW::Ohloh::API::Languages';
+'end of WWW::Ohloh::API::Messages';
 __END__
 
 =head1 NAME

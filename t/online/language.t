@@ -11,12 +11,14 @@ END_MSG
 
 plan tests => 18;
 
-my $ohloh = WWW::Ohloh::API->new( api_key => $ENV{OHLOH_KEY}, debug => 1 );
+my $ohloh = WWW::Ohloh::API->new( api_key => $ENV{OHLOH_KEY} );
 
 my $languages = $ohloh->get_languages( sort => 'code' );
 
 ok $languages->isa('WWW::Ohloh::API::Languages'),
-  'get_languages return W:O:A:Languages';
+  'get_languages returns W:O:A:Languages';
+
+ok $languages->total_entries > 10, 'total_entries() > 10';
 
 my @l = $languages->all;
 
@@ -45,6 +47,3 @@ ok $perl->is_code, 'is_code()';
 ok !$perl->is_markup, 'is_markup()';
 
 like $perl->as_xml, qr#<language>.*</language>#, 'language->as_xml';
-like $languages->as_xml,
-  qr#^<languages>(<language>.*?</language>)+</languages>$#,
-  'languages->as_xml';

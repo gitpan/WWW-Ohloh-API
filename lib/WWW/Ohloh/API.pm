@@ -20,14 +20,14 @@ use WWW::Ohloh::API::ActivityFact;
 use WWW::Ohloh::API::ActivityFacts;
 use WWW::Ohloh::API::Kudos;
 use WWW::Ohloh::API::ContributorLanguageFact;
-use WWW::Ohloh::API::Enlistment;
+use WWW::Ohloh::API::Enlistments;
 use WWW::Ohloh::API::Factoid;
 use WWW::Ohloh::API::SizeFact;
 use WWW::Ohloh::API::Stack;
 
 use Digest::MD5 qw/ md5_hex /;
 
-our $VERSION = '0.1.0';
+our $VERSION = '0.2.0';
 
 Readonly our $OHLOH_URL => 'http://www.ohloh.net/';
 
@@ -41,6 +41,16 @@ my @user_agent_of : Field;
 my @debugging : Field : Arg(debug) : Default(0) : Std(debug);
 
 my @parser_of : Field;
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+sub fetch_messages {
+    my $self = shift;
+
+    require WWW::Ohloh::API::Messages;
+
+    return WWW::Ohloh::API::Messages->new( ohloh => $self, @_ );
+}
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -126,20 +136,13 @@ sub get_account {
 
 sub get_enlistments {
     my $self = shift;
+    my %arg  = @_;
 
-    my %param = validate( @_, { project_id => 1 } );
-
-    my ( $url, $xml ) =
-      $self->_query_server("projects/$param{project_id}/enlistments.xml");
-
-    return map {
-        WWW::Ohloh::API::Enlistment->new(
-            ohloh       => $self,
-            request_url => $url,
-            xml         => $_
-          )
-    } $xml->findnodes('//enlistment');
-
+    return WWW::Ohloh::API::Enlistments->new(
+        ohloh      => $self,
+        project_id => $arg{project_id},
+        ( sort => $arg{sort} ) x !!$arg{sort},
+    );
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -468,10 +471,14 @@ contributor I<$c_id> for the project I<$p_id>.
 
 =head2 get_enlistments( project_id => $id )
 
-    my @enlistments = $ohloh->get_enlistments( project_id => 1234 );
+Returns the list of enlistements pertaining to the
+given project as an L<WWW::Ohloh::API::Enlistment> object.
 
-Return the list of L<WWW::Ohloh::API::Enlistment> objects pertaining to the
-given project.
+    my $enlistments = $ohloh->get_enlistments( project_id => 1234 );
+
+    while ( my $enlistment = $enlistments->next ) {
+        # do stuff with $enlistment...
+    }
 
 =head2 get_size_facts( $project_id, $analysis_id )
 
@@ -490,6 +497,10 @@ objects.
 Return the stack associated with the account as an 
 L<WWW::Ohloh::API::Stack> object.
 
+=head2 fetch_messages( [ account | project ] => I<$id> )
+
+Returns the messages associated to the given account or project
+as a L<WWW::Ohloh::API::Messages> object.
 
 =head1 SEE ALSO
 
@@ -516,7 +527,7 @@ How to obtain an Ohloh API key: http://www.ohloh.net/api_keys/new
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.1.0
+This document describes WWW::Ohloh::API version 0.2.0
 
 =head1 BUGS AND LIMITATIONS
 

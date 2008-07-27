@@ -1,4 +1,4 @@
-package WWW::Ohloh::API::Languages;
+package WWW::Ohloh::API::Enlistments;
 
 use strict;
 use warnings;
@@ -9,17 +9,23 @@ use Carp;
 use XML::LibXML;
 use Readonly;
 use List::MoreUtils qw/ any /;
-use WWW::Ohloh::API::Language;
+use WWW::Ohloh::API::Enlistment;
 
 our $VERSION = '0.2.0';
 
 my @ALLOWED_SORTING;
-Readonly @ALLOWED_SORTING =>
-  qw/ total code projects comment_ratio contributors commits name /;
+Readonly @ALLOWED_SORTING => qw/ module_name type url /;
 
-sub element      { return 'WWW::Ohloh::API::Language' }
-sub element_name { return 'language' }
-sub query_path   { return 'languages.xml' }
+my @project_id_of : Field : Arg(project_id) : Set(_set_project_id) :
+  Get(project_id);
+
+sub element      { return 'WWW::Ohloh::API::Enlistment' }
+sub element_name { return 'enlistment' }
+
+sub query_path {
+    my $self = shift;
+    return "projects/$project_id_of[$$self]/enlistments.xml";
+}
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -30,50 +36,42 @@ sub is_allowed_sort {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub _init : Init {
-    my $self = shift;
-
-    return;
-}
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-'end of WWW::Ohloh::API::Languages';
+'end of WWW::Ohloh::API::Enlistments';
 __END__
 
 =head1 NAME
 
-WWW::Ohloh::API::Languages - a set of Ohloh languages
+WWW::Ohloh::API::Enlistments - a set of Ohloh project enlistments
 
 =head1 SYNOPSIS
 
     use WWW::Ohloh::API;
-    use WWW::Ohloh::API::Languages;
+    use WWW::Ohloh::API::Enlistments;
 
     my $ohloh = WWW::Ohloh::API( api_key => $key );
 
-    my $languages = $ohloh->get_languages( sort => 'code' );
+    my $enlistments = $ohloh->get_enlistments( project_id => 123 );
 
-    while ( my $l = $languages->next ) {
-        print $l->nice_name;
+    while ( my $e = $enlistments->next ) {
+        print $e->repository->url;
     }
 
 =head1 DESCRIPTION
 
-W::O::A::Languages returns a list of languages known to Ohloh.
+W::O::A::Enlistments returns a list of enlistments for a project.
 
-The object doesn't retrieve all languages from the Ohloh
+The object doesn't retrieve all enlistmentss from the Ohloh
 server in one go, but rather fetch them in small groups as
-required.  If you want to download all languages at the
+required.  If you want to download all enlistments at the
 same time, you can use the B<all()> method:
 
-    my @langs = $ohloh->get_languages( sort => 'code' )->all;
+    my @e = $ohloh->get_enlistments( sort => 'module_name' )->all;
 
 =head1 METHODS 
 
 =head2 new( %args )
 
-Creates a new W::O::A::Languages object.  It accepts the following 
+Creates a new W::O::A::Enlistments object.  It accepts the following 
 arguments:
 
 =head3 Arguments
@@ -85,28 +83,28 @@ arguments:
 Mandatory.  Its value is the L<WWW::Ohloh::API> object that will be used
 to query the Ohloh server.
 
-=item max => I<$nbr_languages>
+=item max => I<$n>
 
-The maximum number of languages the set will contain.  If you want to 
+The maximum number of enlistments the set will contain.  If you want to 
 slurp'em all, set it to 'undef' (which is the default).
 
 =back
 
 =head2 all
 
-Returns the retrieved languages' information as
-L<WWW::Ohloh::API::Language> objects.
+Returns the retrieved enlistments' information as
+L<WWW::Ohloh::API::Enlistment> objects.
 
 =head2 next( I<$n> )
 
-Returns the next I<$n> language (or all remaining languages if there are
-less than I<$n>), or C<undef> if there is no more languages
+Returns the next I<$n> enlistment (or all remaining enlistments if there are
+less than I<$n>), or C<undef> if there is no more enlistments
 to retrieve.  After it returned C<undef>, subsequent calls to B<next> will reset
 the list.  If I<$n> is not given, defaults to 1 entry.
 
 =head2 max
 
-Returns the maximum number of languages the object will return, or C<undef>
+Returns the maximum number of enlistments the object will return, or C<undef>
 if no maximum has been set.
 
 =head2 total_entries
@@ -126,7 +124,7 @@ entries have been added or removed since the last retrieval.
 =item * 
 
 L<WWW::Ohloh::API>, 
-L<WWW::Ohloh::API::Language>. 
+L<WWW::Ohloh::API::Enlistment>. 
 
 
 =item *
@@ -135,7 +133,7 @@ Ohloh API reference: http://www.ohloh.net/api/getting_started
 
 =item * 
 
-Ohloh Account API reference: http://www.ohloh.net/api/reference/language
+Ohloh Account API reference: http://www.ohloh.net/api/reference/enlistment
 
 =back
 
@@ -155,6 +153,7 @@ L<http://rt.cpan.org>.
 
 =head1 AUTHOR
 
+Yuval Kogman and
 Yanick Champoux  C<< <yanick@cpan.org> >>
 
 =head1 LICENCE AND COPYRIGHT
@@ -165,3 +164,4 @@ This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.
 
 =cut
+
