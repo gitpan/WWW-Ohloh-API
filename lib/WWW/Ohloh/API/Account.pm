@@ -4,45 +4,105 @@ use strict;
 use warnings;
 
 use Carp;
-use Object::InsideOut;
+use Object::InsideOut qw/
+  WWW::Ohloh::API::Role::Fetchable
+  WWW::Ohloh::API::Role::LoadXML /;
 use XML::LibXML;
 use WWW::Ohloh::API::KudoScore;
+use Time::Piece;
+use Date::Parse;
 
-our $VERSION = '0.2.0';
+use Params::Validate qw/ validate validate_with /;
+
+our $VERSION = '0.3.0';
 
 use overload '""' => sub { $_[0]->name };
 
-my @ohloh_of : Field : Arg(ohloh) : Get(_ohloh);
-my @request_url_of : Field : Arg(request_url) : Get( request_url );
-my @xml_of : Field : Arg(xml);
-
-my @id_of : Field : Set(_set_id) : Get(id);
-my @name_of : Field : Set(_set_name) : Get(name);
-my @creation_date_of : Field : Set(_set_created_at) : Get(created_at);
-my @update_date_of : Field : Set(_set_updated_at) : Get(updated_at);
-my @homepage_url_of : Field : Set(_set_homepage_url) : Get(homepage_url);
-my @avatar_url_of : Field : Set(_set_avatar_url) : Get(avatar_url);
-my @posts_count_of : Field : Set(_set_posts_count) : Get(posts_count);
-my @location_of : Field : Set(_set_location) : Get(location);
-my @latitude_of : Field : Set(_set_latitude) : Get(latitude);
-my @longitude_of : Field : Set(_set_longitude) : Get(longitude);
-my @country_code_of : Field : Set(_set_country_code) : Get(country_code);
-my @kudo_of : Field : Set(_set_kudo) : Get(kudo_score);
-
+#<<<
+my @id_of               : Field 
+                        : Set(_set_id) 
+                        : Get(id)
+                        ;
+my @name_of             : Field 
+                        : Set(_set_name) 
+                        : Get(name)
+                        ;
+my @creation_date_of    : Field 
+                        : Set(_set_created_at) 
+                        : Get(created_at)
+                        : Type(Time::Piece)
+                        ;
+my @update_date_of      : Field 
+                        : Set(_set_updated_at) 
+                        : Get(updated_at)
+                        ;
+my @homepage_url_of     : Field 
+                        : Set(_set_homepage_url) 
+                        : Get(homepage_url)
+                        ;
+my @avatar_url_of       : Field 
+                        : Set(_set_avatar_url) 
+                        : Get(avatar_url)
+                        ;
+my @posts_count_of      : Field 
+                        : Set(_set_posts_count) 
+                        : Get(posts_count)
+                        ;
+my @location_of         : Field 
+                        : Set(_set_location) 
+                        : Get(location)
+                        ;
+my @latitude_of         : Field 
+                        : Set(_set_latitude) 
+                        : Get(latitude)
+                        ;
+my @longitude_of        : Field 
+                        : Set(_set_longitude) 
+                        : Get(longitude)
+                        ;
+my @country_code_of     : Field 
+                        : Set(_set_country_code) 
+                        : Get(country_code)
+                        ;
+my @kudo_of             : Field 
+                        : Set(_set_kudo) 
+                        : Get(kudo_score)
+                        ;
+#>>>
 my @kudos_of : Field : Arg(kudos);
 
 my @stack : Field;
 
+sub element_name { return 'account' }
+
+sub generate_query_url : Chained(bottom up) {
+    my ( $self, @args ) = @_;
+
+    my %param = validate_with(
+        params      => \@args,
+        spec        => { id => 1 },
+        allow_extra => 1
+    );
+    my $id = $param{id};
+    delete $param{id};
+
+    if ( index( $id, '@' ) > -1 ) {
+        $id = md5_hex($id);
+    }
+
+    return ( "accounts/$id.xml", %param );
+}
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub _init : Init {
-    my $self = shift;
-
-    my $dom = $xml_of[$$self] or return;
+sub load_xml {
+    my ( $self, $dom ) = @_;
 
     $self->_set_id( $dom->findvalue('id/text()') );
     $self->_set_name( $dom->findvalue('name/text()') );
-    $self->_set_created_at( $dom->findvalue('created_at/text()') );
+    $self->_set_created_at(
+        Time::Piece->new( str2time( $dom->findvalue('created_at/text()') ) )
+    );
     $self->_set_updated_at( $dom->findvalue('updated_at/text()') );
     $self->_set_homepage_url( $dom->findvalue('homepage_url/text()') );
     $self->_set_avatar_url( $dom->findvalue('avatar_url/text()') );
@@ -56,6 +116,8 @@ sub _init : Init {
         $kudo_of[$$self] = WWW::Ohloh::API::KudoScore->new( xml => $node );
     }
 }
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub as_xml {
     my $self = shift;
@@ -97,7 +159,7 @@ sub stack {
     $retrieve = 1 unless defined $retrieve;
 
     if ( $retrieve and not $stack[$$self] ) {
-        $stack[$$self] = $ohloh_of[$$self]->get_account_stack( $self->id );
+        $stack[$$self] = $self->ohloh->get_account_stack( $self->id );
         $stack[$$self]->set_account($self);
     }
 
@@ -109,7 +171,7 @@ sub stack {
 sub sent_kudos {
     my $self = shift;
 
-    $kudos_of[$$self] ||= $self->_ohloh->get_kudos( id => $self->id );
+    $kudos_of[$$self] ||= $self->ohloh->get_kudos( id => $self->id );
 
     return $kudos_of[$$self]->sent;
 }
@@ -119,7 +181,7 @@ sub sent_kudos {
 sub received_kudos {
     my $self = shift;
 
-    $kudos_of[$$self] ||= $self->_ohloh->get_kudos( id => $self->id );
+    $kudos_of[$$self] ||= $self->ohloh->get_kudos( id => $self->id );
 
     return $kudos_of[$$self]->received;
 }
@@ -129,7 +191,7 @@ sub received_kudos {
 sub kudos {
     my $self = shift;
 
-    return $kudos_of[$$self] ||= $self->_ohloh->get_kudos( id => $self->id );
+    return $kudos_of[$$self] ||= $self->ohloh->get_kudos( id => $self->id );
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -230,8 +292,7 @@ will return nothing.
 
 Return the account information (including the kudo score if it applies)
 as an XML string.  Note that this is not the exact xml document as returned
-by the Ohloh server: due to the current XML parsing module used
-by W::O::A (to wit: L<XML::Simple>), the ordering of the nodes can differ.
+by the Ohloh server.
 
 =head1 OVERLOADING
 
@@ -260,7 +321,7 @@ Ohloh Account API reference: http://www.ohloh.net/api/reference/account
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.2.0
+This document describes WWW::Ohloh::API version 0.3.0
 
 =head1 BUGS AND LIMITATIONS
 
