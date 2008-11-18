@@ -23,18 +23,18 @@ use WWW::Ohloh::API::ContributorLanguageFact;
 use WWW::Ohloh::API::Enlistments;
 use WWW::Ohloh::API::Factoid;
 use WWW::Ohloh::API::SizeFact;
-use WWW::Ohloh::API::Stack;
 
 use Digest::MD5 qw/ md5_hex /;
 
-our $VERSION = '0.3.1';
+our $VERSION = '1.0_0';
 
 Readonly our $OHLOH_URL => 'http://www.ohloh.net/';
 
 our $useragent_signature = "WWW-Ohloh-API/$VERSION";
 
 my @api_key_of : Field : Std(api_key) : Arg(api_key);
-my @api_version_of : Field : Default(1);    # for now, there's only v1
+my @api_version_of : Field : Default(1) : Std(api_version)
+  ;    # for now, there's only v1
 
 my @user_agent_of : Field;
 
@@ -54,10 +54,17 @@ sub fetch_messages {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_account_stack {
+sub fetch_account_stack {
     my $self = shift;
 
     my $id = shift;
+
+    require WWW::Ohloh::API::Stack;
+
+    return WWW::Ohloh::API::Stack->fetch(
+        ohloh => $self,
+        id    => $id
+    );
 
     $id = md5_hex($id) if -1 < index $id, '@';    # it's an email
 
@@ -73,12 +80,14 @@ sub get_account_stack {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_project_stacks {
+sub fetch_project_stacks {
     my $self = shift;
 
     my $project = shift;
 
     my ( $url, $xml ) = $self->_query_server("projects/$project/stacks.xml");
+
+    require WWW::Ohloh::API::Stack;
 
     return map {
         WWW::Ohloh::API::Stack->new(
@@ -91,7 +100,7 @@ sub get_project_stacks {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_size_facts {
+sub fetch_size_facts {
     my $self = shift;
 
     my ( $project_id, $analysis_id ) =
@@ -112,29 +121,20 @@ sub get_size_facts {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_account {
-    my $self = shift;
+sub fetch_account {
+    my ( $self, $id ) = @_;
 
-    my ( $type, $id ) = @_;
+    require WWW::Ohloh::API::Account;
 
-    $type eq 'id'
-      or $type eq 'email'
-      or croak "first argument must be 'id' or 'email'";
-
-    $id = md5_hex($id) if $type eq 'email';
-
-    my ( $url, $xml ) = $self->_query_server("accounts/$id.xml");
-
-    return WWW::Ohloh::API::Account->new(
-        ohloh       => $self,
-        request_url => $url,
-        xml         => $xml->findnodes('account[1]'),
+    return WWW::Ohloh::API::Account->fetch(
+        ohloh => $self,
+        id    => $id,
     );
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_enlistments {
+sub fetch_enlistments {
     my $self = shift;
     my %arg  = @_;
 
@@ -147,7 +147,7 @@ sub get_enlistments {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_factoids {
+sub fetch_factoids {
     my $self = shift;
 
     my $project_id = shift;
@@ -166,7 +166,7 @@ sub get_factoids {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_contributor_language_facts {
+sub fetch_contributor_language_facts {
     my $self = shift;
 
     my %param = validate(
@@ -191,15 +191,11 @@ sub get_contributor_language_facts {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_kudos {
+sub fetch_kudos {
     my $self = shift;
-    my ( $type, $id ) = @_;
+    my ($id) = @_;
 
-    $type eq 'id'
-      or $type eq 'email'
-      or croak "first argument must be 'id' or 'email'";
-
-    $id = md5_hex($id) if $type eq 'email';
+    $id = md5_hex($id) if -1 < index $id, '@';
 
     return WWW::Ohloh::API::Kudos->new(
         ohloh => $self,
@@ -209,7 +205,7 @@ sub get_kudos {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_project {
+sub fetch_project {
     my $self = shift;
     my $id   = shift;
 
@@ -224,7 +220,7 @@ sub get_project {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_projects {
+sub fetch_projects {
     my $self = shift;
     my %arg = validate( @_, { query => 0, sort => 0, max => 0 } );
 
@@ -238,7 +234,7 @@ sub get_projects {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_analysis {
+sub fetch_analysis {
     my $self    = shift;
     my $project = shift;
 
@@ -261,7 +257,7 @@ sub get_analysis {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_languages {
+sub fetch_languages {
     my $self = shift;
     my %arg  = @_;
 
@@ -273,7 +269,7 @@ sub get_languages {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_language {
+sub fetch_language {
     my $self = shift;
     my $id   = shift;
 
@@ -288,7 +284,7 @@ sub get_language {
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub get_activity_facts {
+sub fetch_activity_facts {
     my $self = shift;
     my ( $project, $analysis ) =
       validate_pos( @_, 1, { default => 'latest' }, );
@@ -312,24 +308,30 @@ sub _ua {
     return $ua;
 }
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 sub _parser {
     my $self = shift;
     return $parser_of[$$self] ||= XML::LibXML->new;
 }
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub _query_server {
     my $self  = shift;
     my $url   = shift;
     my %param = $_[0] ? %{ $_[0] } : ();
 
-    $param{api_key} = $self->get_api_key
-      or croak "api key not configured";
+    if ( $url !~ /^http/ ) {
+        $param{api_key} = $self->get_api_key
+          or croak "api key not configured";
 
-    $param{v} = $api_version_of[$$self];
+        $param{v} = $api_version_of[$$self];
 
-    $url = $OHLOH_URL . $url;
+        $url = $OHLOH_URL . $url;
 
-    $url .= '?' . join '&', map { "$_=$param{$_}" } keys %param;
+        $url .= '?' . join '&', map { "$_=$param{$_}" } keys %param;
+    }
 
     warn "querying ohloh server with $url" if $debugging[$$self];
 
@@ -355,6 +357,7 @@ sub _query_server {
 }
 
 1;    # Magic true value required at end of module
+
 __END__
 
 =head1 NAME
@@ -366,7 +369,7 @@ WWW::Ohloh::API - Ohloh API implementation
     use WWW::Ohloh::API;
 
     my $ohloh = WWW::Ohloh::API->new( api_key => $my_api_key );
-    my $account $ohloh->get_account( id => 12933 );
+    my $account = $ohloh->fetch_account( 12933 );
 
     print $account->name;
 
@@ -385,7 +388,7 @@ or set via the L<set_api_key> method.
 
     my $ohloh = WWW::Ohloh::API->new( api_key => $your_key );
 
-=head2 get_account( [ id | email ] => $account_id )
+=head2 fetch_account( $account_id )
 
 Return the account associated with the $account_id as a 
 L<WWW::Ohloh::API::Account>
@@ -393,20 +396,20 @@ object. If no such account exists, an error is thrown.
 The $accound_id can either be specified as the Ohloh id number, 
 or the email address associated with the account.
 
-    my $account = $ohloh->get_account( id => 12933 );
-    my $other_accound = $ohloh->get_account( email => 'foo@bar.com' );
+    my $account = $ohloh->fetch_account( 12933 );
+    my $other_accound = $ohloh->fetch_account( 'foo@bar.com' );
 
 
-=head2 get_project( $id )
+=head2 fetch_project( $id )
 
 Return the project having the Ohloh id I<$id> as a
 L<WWW::Ohloh::API::Project>.  If no such project exists, 
 an error is thrown.
 
-    my $project = $ohloh->get_project( 1234) ;
+    my $project = $ohloh->fetch_project( 1234) ;
     print $project->name;
 
-=head2 get_projects( query => $query, sort => $sorting_order, max => $nbr )
+=head2 fetch_projects( query => $query, sort => $sorting_order, max => $nbr )
 
 Return a set of projects as a L<WWW::Ohloh::API::Projects> object. 
 
@@ -435,11 +438,11 @@ is explicitly given, 'id' is the default.
 If given, the project set will returns at most I<$nbr> projects.
 
     # get top ten stacked projects
-    my @top = $ohloh->get_projects( max => 10, sort => 'stack_count' )->all;
+    my @top = $ohloh->fetch_projects( max => 10, sort => 'stack_count' )->all;
 
 =back
 
-=head2 get_languages( sort => $order )
+=head2 fetch_languages( sort => $order )
 
 Return the languages known to Ohloh a set of L<WWW::Ohloh::API::Language>
 objects. 
@@ -450,7 +453,7 @@ C<total>, C<code>, C<projects>, C<comment_ratio>,
 C<contributors>, C<commits> and C<name>. If I<sort> is not explicitly called,
 projects are returned in alphabetical order of C<name>s.
 
-=head2 get_activity_facts( $project_id, $analysis )
+=head2 fetch_activity_facts( $project_id, $analysis )
 
 Return a set of activity facts computed out of the project associated
 with the I<$project_id> as a L<WWW::Ohloh::API::ActivityFacts> object. 
@@ -459,9 +462,9 @@ The optional argument I<$analysis> can be either an Ohloh analysis id
 (which must be an analysis associated to the project) or the keyword
 'latest'. By default the latest analysis will be queried.
 
-=head2 get_contributor_language_facts( project_id => $p_id,  contributor_id => $c_id )
+=head2 fetch_contributor_language_facts( project_id => $p_id,  contributor_id => $c_id )
 
-    my @facts = $ohloh->get_contributor_language_facts(
+    my @facts = $ohloh->fetch_contributor_language_facts(
         project_id     => 1234,
         contributor_id => 5678
     );
@@ -469,33 +472,41 @@ The optional argument I<$analysis> can be either an Ohloh analysis id
 Return the list of contributor language facts associated to the 
 contributor I<$c_id> for the project I<$p_id>.
 
-=head2 get_enlistments( project_id => $id )
+=head2 fetch_enlistments( project_id => $id )
 
 Returns the list of enlistements pertaining to the
 given project as an L<WWW::Ohloh::API::Enlistment> object.
 
-    my $enlistments = $ohloh->get_enlistments( project_id => 1234 );
+    my $enlistments = $ohloh->fetch_enlistments( project_id => 1234 );
 
     while ( my $enlistment = $enlistments->next ) {
         # do stuff with $enlistment...
     }
 
-=head2 get_size_facts( $project_id, $analysis_id )
+=head2 fetch_size_facts( $project_id, $analysis_id )
 
 Return the list of L<WWW::Ohloh::API::SizeFact> objects pertaining to the
 given project and analysis. If I<$analysis_id> is not provided, it defaults
 to the latest analysis done on the project.
 
-=head2 get_project_stacks( $project_id ) 
+=head2 fetch_project_stacks( $project_id ) 
 
-Return the list of stacks containing the project as 
+Returns the list of stacks containing the project as 
 L<WWW::Ohloh::API::Stack>
 objects.
 
-=head2 get_account_stack( $account_id )
+=head2 fetch_account_stack( $account_id )
 
-Return the stack associated with the account as an 
+Returns the stack associated with the account as an 
 L<WWW::Ohloh::API::Stack> object.
+
+=head2 fetch_kudos( $account_id )
+
+Returns the kudos associated with the given account 
+(the id can be either the numerical id or the account's
+email address) as a list of L<WWW::Ohloh::API::Kudo> objects.
+
+    my @kudos = $ohloh->fetch_kudos( 12345 );
 
 =head2 fetch_messages( [ account | project ] => I<$id> )
 
@@ -527,7 +538,7 @@ How to obtain an Ohloh API key: http://www.ohloh.net/api_keys/new
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 0.3.1
+This document describes WWW::Ohloh::API version 1.0_0
 
 =head1 BUGS AND LIMITATIONS
 
