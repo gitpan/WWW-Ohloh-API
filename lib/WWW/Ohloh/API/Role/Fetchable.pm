@@ -9,7 +9,7 @@ use Carp;
 use Params::Validate qw/ validate_with validate /;
 use URI;
 
-our $VERSION = '1.0_1';
+our $VERSION = '0.3.2';
 
 #<<<
 my @request_url_of  : Field 
@@ -44,6 +44,7 @@ sub fetch {
     );
 
     my $ohloh = $param{ohloh};
+    delete $param{ohloh};
 
     my ($url) = $class->generate_query_url(%param);
 
@@ -57,17 +58,11 @@ sub fetch {
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sub generate_query_url : Chained(bottom up) {
-    my ( $self, $url, %args ) = @_;
+    my ( $self, $url, @args ) = @_;
 
-    my $ohloh = $args{ohloh};
-    delete $args{ohloh};
-    $args{api_key} ||= $ohloh->get_api_key;
-    $args{v}       ||= $ohloh->get_api_version;
+    croak "$args[0] not a valid argument" if @args;
 
-    no warnings qw/ uninitialized /;
-
-    return $WWW::Ohloh::API::OHLOH_URL . $url . '?' . join '&',
-      map { $_ . '=' . $args{$_} } reverse sort keys %args;
+    return ($url);
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

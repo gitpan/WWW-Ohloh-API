@@ -6,7 +6,7 @@ use warnings;
 use Object::InsideOut;
 use Carp;
 
-our $VERSION = '1.0_1';
+our $VERSION = '0.3.2';
 
 use overload '<>' => \&next;
 

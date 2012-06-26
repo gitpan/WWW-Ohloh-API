@@ -4,20 +4,16 @@ use strict;
 use warnings;
 
 use Carp;
-use Object::InsideOut qw/ WWW::Ohloh::API::Role::Fetchable
-  WWW::Ohloh::API::Role::LoadXML /;
+use Object::InsideOut;
 use XML::LibXML;
 use Readonly;
 use Scalar::Util qw/ weaken /;
 use Date::Parse;
 use Time::Piece;
-use Digest::MD5 qw/ md5_hex /;
 
 use WWW::Ohloh::API::StackEntry;
 
-use Params::Validate qw/ validate_with /;
-
-our $VERSION = '1.0_1';
+our $VERSION = '0.3.2';
 
 my @ohloh_of : Field : Arg(ohloh);
 my @request_url_of : Field : Arg(request_url) : Get( request_url );
@@ -40,12 +36,10 @@ my @account_of : Field;
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-sub element_name { return 'stack'; }
+sub _init : Init {
+    my $self = shift;
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-sub load_xml {
-    my ( $self, $dom ) = @_;
+    my $dom = $xml_of[$$self] or return;
 
     for my $f (qw/ id project_count account_id /) {
         my $method = "_set_$f";
@@ -53,8 +47,8 @@ sub load_xml {
     }
 
     $self->_set_updated_at(
-        scalar Time::Piece::gmtime(
-            str2time( $dom->findvalue("updated_at/text()") ) ) );
+        Time::Piece->new( str2time( $dom->findvalue("updated_at/text()") ) )
+    );
 
     if ( my ($account_xml) = $dom->findnodes('account[1]') ) {
         $account_of[$$self] = WWW::Ohloh::API::Account->new(
@@ -68,26 +62,8 @@ sub load_xml {
             ohloh => $ohloh_of[$$self],
             xml   => $_,
           ) => $dom->findnodes('stack_entries/stack_entry') ];
-}
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-sub generate_query_url : Chained(bottom up) {
-    my ( $self, @args ) = @_;
-
-    my %param = validate_with(
-        params      => \@args,
-        spec        => { id => 1 },
-        allow_extra => 1
-    );
-    my $id = $param{id};
-    delete $param{id};
-
-    if ( index( $id, '@' ) > -1 ) {
-        $id = md5_hex($id);
-    }
-
-    return ( "accounts/$id/stacks/default.xml", ohloh => $param{ohloh} );
+    return;
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -136,7 +112,7 @@ sub account {
 
     if ($retrieve) {
         $account_of[$$self] ||=
-          $ohloh_of[$$self]->fetch_account( $self->account_id );
+          $ohloh_of[$$self]->get_account( id => $self->account_id );
     }
 
     return $account_of[$$self];
@@ -164,7 +140,7 @@ my $ohloh = Fake::Ohloh->new;
 
 $ohloh->stash( 'yadah', 'stack.xml' );
 
-my $thingy = $ohloh->fetch_account_stack( 123 );
+my $thingy = $ohloh->get_account_stack( 123 );
 
 =end test
 
@@ -179,7 +155,7 @@ WWW::Ohloh::API::Stack - a collection of projects used by a person
     my $ohloh = WWW::Ohloh::API->new( api_key => $my_api_key );
 
     # get the stack of a person
-    my $stack = $ohloh->fetch_account_stack( $account_id );
+    my $stack = $ohloh->get_account_stack( $account_id );
 
     # get stacks containing a project
     my @stacks = $ohloh->get_project_stacks( $project_id );
@@ -212,7 +188,7 @@ or removed from this stack as a L<Time::Piece> object.
 
 =for test
     isa_ok $result[0], 'Time::Piece';
-    is $result[0], 'Mon Mar 17 17:09:16 2008', 'updated_at()';
+    is $result[0], 'Mon Mar 17 13:09:16 2008', 'updated_at()';
 
 =head3 project_count
 
@@ -285,7 +261,7 @@ Ohloh Account API reference: http://www.ohloh.net/api/reference/stack
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 1.0_1
+This document describes WWW::Ohloh::API version 0.3.2
 
 =head1 BUGS AND LIMITATIONS
 

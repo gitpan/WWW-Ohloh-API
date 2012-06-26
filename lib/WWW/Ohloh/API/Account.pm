@@ -14,9 +14,7 @@ use Date::Parse;
 
 use Params::Validate qw/ validate validate_with /;
 
-use Digest::MD5 qw/ md5_hex /;
-
-our $VERSION = '1.0_1';
+our $VERSION = '0.3.2';
 
 use overload '""' => sub { $_[0]->name };
 
@@ -37,7 +35,6 @@ my @creation_date_of    : Field
 my @update_date_of      : Field 
                         : Set(_set_updated_at) 
                         : Get(updated_at)
-                        : Type(Time::Piece)
                         ;
 my @homepage_url_of     : Field 
                         : Set(_set_homepage_url) 
@@ -93,7 +90,7 @@ sub generate_query_url : Chained(bottom up) {
         $id = md5_hex($id);
     }
 
-    return ( "accounts/$id.xml", ohloh => $param{ohloh} );
+    return ( "accounts/$id.xml", %param );
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -104,11 +101,9 @@ sub load_xml {
     $self->_set_id( $dom->findvalue('id/text()') );
     $self->_set_name( $dom->findvalue('name/text()') );
     $self->_set_created_at(
-        scalar Time::Piece::gmtime(
-            str2time( $dom->findvalue('created_at/text()') ) ) );
-    $self->_set_updated_at(
-        scalar Time::Piece::gmtime(
-            str2time( $dom->findvalue('updated_at/text()') ) ) );
+        Time::Piece->new( str2time( $dom->findvalue('created_at/text()') ) )
+    );
+    $self->_set_updated_at( $dom->findvalue('updated_at/text()') );
     $self->_set_homepage_url( $dom->findvalue('homepage_url/text()') );
     $self->_set_avatar_url( $dom->findvalue('avatar_url/text()') );
     $self->_set_posts_count( $dom->findvalue('posts_count/text()') );
@@ -164,7 +159,7 @@ sub stack {
     $retrieve = 1 unless defined $retrieve;
 
     if ( $retrieve and not $stack[$$self] ) {
-        $stack[$$self] = $self->ohloh->fetch_account_stack( $self->id );
+        $stack[$$self] = $self->ohloh->get_account_stack( $self->id );
         $stack[$$self]->set_account($self);
     }
 
@@ -196,7 +191,7 @@ sub received_kudos {
 sub kudos {
     my $self = shift;
 
-    return $kudos_of[$$self] ||= $self->ohloh->fetch_kudos( $self->id );
+    return $kudos_of[$$self] ||= $self->ohloh->get_kudos( id => $self->id );
 }
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -213,7 +208,7 @@ WWW::Ohloh::API::Account - an Ohloh account
     use WWW::Ohloh::API;
 
     my $ohloh = WWW::Ohloh::API->new( api_key => $my_api_key );
-    my $account $ohloh->fetch_account( 12933 );
+    my $account $ohloh->get_account( id => 12933 );
 
     print $account->name;
 
@@ -238,12 +233,11 @@ Return the public name of the account.
 
 =head3 created_at
 
-Return the time at which the account was created as a L<Time::Piece> object .
+Return the time at which the account was created.
 
 =head3 updated_at
 
-Return the last time at which the account was modified as a L<Time::Piece>
-object.
+Return the last time at which the account was modified.
 
 =head3 homepage_url
 
@@ -311,10 +305,6 @@ the name associated with the account. E.g.,
 
 =over
 
-=item *
-
-L<Time::Piece>
-
 =item * 
 
 L<WWW::Ohloh::API>, L<WWW::Ohloh::API::KudoScore>.
@@ -331,7 +321,7 @@ Ohloh Account API reference: http://www.ohloh.net/api/reference/account
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 1.0_1
+This document describes WWW::Ohloh::API version 0.3.2
 
 =head1 BUGS AND LIMITATIONS
 

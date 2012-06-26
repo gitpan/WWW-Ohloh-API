@@ -9,7 +9,7 @@ use XML::LibXML;
 use WWW::Ohloh::API::Analysis;
 use WWW::Ohloh::API::ContributorFact;
 
-our $VERSION = '1.0_1';
+our $VERSION = '0.3.2';
 
 my @request_url_of : Field : Arg(request_url) : Get( request_url );
 my @ohloh_of : Field : Arg(ohloh) : Get( _ohloh );
@@ -67,7 +67,7 @@ sub analysis {
 
     if ( $id or not $analysis_of[$$self] ) {
         $analysis_of[$$self] =
-          $ohloh_of[$$self]->fetch_analysis( $self->id, $id );
+          $ohloh_of[$$self]->get_analysis( $self->id, $id );
         $analysis_id_of[$$self] = $analysis_of[$$self]->id;
     }
 
@@ -82,7 +82,7 @@ sub activity_facts {
 
     if ( $id or not $facts_of[$$self] ) {
         $facts_of[$$self] =
-          $ohloh_of[$$self]->fetch_activity_facts( $self->id,
+          $ohloh_of[$$self]->get_activity_facts( $self->id,
             $id || $self->analysis_id || 'latest' );
     }
 
@@ -148,7 +148,7 @@ sub factoids {
 
     unless ( defined $factoids_of[$$self] ) {
         $factoids_of[$$self] =
-          [ $ohloh_of[$$self]->fetch_factoids( $self->id ) ];
+          [ $ohloh_of[$$self]->get_factoids( $self->id ) ];
     }
 
     return @{ $factoids_of[$$self] };
@@ -168,7 +168,7 @@ WWW::Ohloh::API::Project - an Ohloh project
     use WWW::Ohloh::API;
 
     my $ohloh = WWW::Ohloh::API->new( api_key => $my_api_key );
-    my $project = $ohloh->fetch_project( id => 1001 );
+    my $project = $ohloh->get_project( id => 1001 );
 
     print $project->homepage_url;
 
@@ -177,7 +177,7 @@ WWW::Ohloh::API::Project - an Ohloh project
 W::O::A::Project contains the information associated with an Ohloh 
 project as defined at http://www.ohloh.net/api/reference/project. 
 To be properly populated, it must be created via
-the C<fetch_project> method of a L<WWW::Ohloh::API> object.
+the C<get_project> method of a L<WWW::Ohloh::API> object.
 
 =head1 METHODS 
 
@@ -235,8 +235,8 @@ Return the number of users having rated this project.
 
 Return the id of the current analysis associated with the project. 
 It'll be the latest 
-analysis if the project has been retrieved via C<fetch_project>, and 
-will be null if retrieved via C<fetch_projects>.
+analysis if the project has been retrieved via C<get_project>, and 
+will be null if retrieved via C<get_projects>.
 
 =head3 analysis( $id )
 
@@ -255,7 +255,7 @@ If C<$analysis_id> is not given, the previously called
 analysis will be used and, if no analysis has been explicitly
 called, the latest one will be used.
 
-    $project = $ohloh->fetch_project( 12345);       # retrieve the project
+    $project = $ohloh->get_project( 12345);       # retrieve the project
 
     $latest = $project->activity_facts;           # get the latest facts
 
@@ -309,7 +309,7 @@ Ohloh Account API reference: http://www.ohloh.net/api/reference/project
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 1.0_1
+This document describes WWW::Ohloh::API version 0.3.2
 
 =head1 BUGS AND LIMITATIONS
 

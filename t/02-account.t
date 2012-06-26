@@ -5,14 +5,12 @@ use Test::More qw/ no_plan /;    # last test to print
 
 require 't/FakeOhloh.pm';
 
-my $ohloh = Fake::Ohloh->new( api_key => 'myapikey' );
+my $ohloh = Fake::Ohloh->new;
 
 $ohloh->stash( 'http://www.ohloh.net/accounts/12933.xml?v=1&api_key=myapikey',
     'account.xml' );
 
-my $account = $ohloh->fetch_account(12933);
-
-is $account => 'Yanick', 'overloading';
+my $account = $ohloh->get_account( id => 12933 );
 
 like $account->as_xml => qr# ^ \s* <account> .* </account> \s* $ #sx,
   'as_xml()';
@@ -23,7 +21,7 @@ is $account->request_url =>
 is $account->id   => 12933,    'id';
 is $account->name => 'Yanick', 'name';
 isa_ok $account->created_at => 'Time::Piece';
-is $account->updated_at     => 'Thu Jan  3 14:53:18 2008', 'updated at';
+is $account->updated_at     => '2008-01-03T14:53:18Z', 'updated at';
 is $account->homepage_url   => '', "homepage url";
 is $account->avatar_url =>
   'http://www.gravatar.com/avatar.php?gravatar_id=a15c336550dd22cbdff9743a54b56b3b',

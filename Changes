@@ -1,12 +1,8 @@
 Revision history for WWW-Ohloh-API
 
-1.0_1 - Wed Nov 19 2008
-    * Changed the Time::Piece objects to be local to GMT
+0.3.2 - 26 June 2012
+    * fix overloading tests [RT62023] 
 
-1.0_0 - Tue Nov 18 2008
-    * Changed all instances of get_* to fetch* in WWW::Ohloh::API
-    * Adding repository and bugtracker info to META.yml
-    * Fixed Test::Pod::Snippets test
 
 0.3.0 - Sun Aug 10 21:52:58 EDT 2008
     * Repository object's url is now a URI object

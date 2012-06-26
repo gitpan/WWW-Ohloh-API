@@ -9,7 +9,7 @@ use XML::LibXML;
 use Readonly;
 use List::MoreUtils qw/ any /;
 
-our $VERSION = '1.0_1';
+our $VERSION = '0.3.2';
 
 my @ohloh_of : Field : Arg(ohloh);
 my @request_url_of : Field : Arg(request_url) : Get( request_url );
@@ -100,7 +100,7 @@ WWW::Ohloh::API::StackEntry - A project entry in a stack
     my $ohloh = WWW::Ohloh::API->new( api_key => $my_api_key );
 
     # from an account
-    my @entries = $ohloh->fetch_account_stack( $account_id )->stack_entries;
+    my @entries = $ohloh->get_account_stack( $account_id )->stack_entries;
 
     # from a project
     my @stacks = $ohloh->get_project_stacks( $project_id );
@@ -168,7 +168,7 @@ Ohloh Account API reference: http://www.ohloh.net/api/reference/stack_entry
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API version 1.0_1
+This document describes WWW::Ohloh::API version 0.3.2
 
 =head1 BUGS AND LIMITATIONS
 

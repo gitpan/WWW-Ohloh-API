@@ -7,7 +7,7 @@ use Carp;
 use Object::InsideOut;
 use XML::LibXML;
 
-our $VERSION = '1.0_1';
+our $VERSION = '0.3.2';
 
 my @ohloh_of : Field : Arg(ohloh) : Get(_ohloh);
 my @request_url_of : Field : Arg(request_url) : Get( request_url );
@@ -112,7 +112,7 @@ sub account {
 
     my $id = $self->account_id or return;
 
-    return $account_of[$$self] = $self->_ohloh->fetch_account($id);
+    return $account_of[$$self] = $self->_ohloh->get_account( id => $id );
 }
 
 'end of WWW::Ohloh::API::ContributorFact';
@@ -238,7 +238,7 @@ http://www.ohloh.net/api/reference/contributor_fact
 
 =head1 VERSION
 
-This document describes WWW::Ohloh::API::ContributorFact version 1.0_1
+This document describes WWW::Ohloh::API::ContributorFact version 0.3.2
 
 =head1 BUGS AND LIMITATIONS
 

@@ -36,11 +36,10 @@ sub validate_stack_entry {
     like $entry->project_id, qr/^\d+$/;
 
     if ( my $project = $entry->project(0) ) {
-
-        # validate_project($project);
+        validate_project($project);
     }
 
-    like $entry->as_xml, qr#<stack_entry>.*</stack_entry>#s, 'as_xml()';
+    like $entry->as_xml, qr#<stack_entry>.*</stack_entry>#, 'as_xml()';
 
 }
 
